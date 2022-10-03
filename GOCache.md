@@ -20,7 +20,7 @@ list双向链表定义：
 哨兵节点：
 
 * GO标准库实现的双向链表，没有像Java那样使用head、tail来分别表示头部和尾部。而是使用了一个虚拟节点Root实现了head、tail的作用。
-* ![](E:\develop\code\GOProjects\GoCache\GOCache\list哨兵节点.png)
+* ![哨兵节点](https://richarli.oss-cn-beijing.aliyuncs.com/images/list哨兵节点.png)
 
 参考资料：
 
