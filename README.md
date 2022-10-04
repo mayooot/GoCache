@@ -24,11 +24,9 @@ list双向链表定义：
 
 参考资料：
 
-[什么是鸭子类型](https://cloud.tencent.com/developer/article/1849579)
-[Go 标准库-双向链表 (container/list) 源码解析](https://blog.csdn.net/eight_eyes/article/details/121068799)
-[理解Golang中的interface和interface{}](https://www.cnblogs.com/maji233/p/11178413.html)
-
-
+[什么是鸭子类型](https://cloud.tencent.com/developer/article/1849579)  
+[Go 标准库-双向链表 (container/list) 源码解析](https://blog.csdn.net/eight_eyes/article/details/121068799)  
+[理解Golang中的interface和interface{}](https://www.cnblogs.com/maji233/p/11178413.html)            
 
 ### day02
 

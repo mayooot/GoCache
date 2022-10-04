@@ -1,4 +1,4 @@
-package GoCache
+package gocache
 
 // ByteView 只读数据结构，用来表示缓存值（value）。
 type ByteView struct {

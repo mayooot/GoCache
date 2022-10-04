@@ -1,4 +1,4 @@
-package GoCache
+package gocache
 
 import (
 	"fmt"
@@ -63,7 +63,7 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 func GetGroup(name string) *Group {
 	mu.RLock()
 	g := groups[name]
-	mu.Unlock()
+	mu.RUnlock()
 	return g
 }
 
@@ -88,7 +88,6 @@ func (g *Group) load(key string) (value ByteView, err error) {
 	return g.getLocally(key)
 }
 
-//
 func (g *Group) getLocally(key string) (ByteView, error) {
 	// 调用开发者传递的回调函数，从本地获取数据。
 	bytes, err := g.getter.Get(key)
