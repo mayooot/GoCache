@@ -28,3 +28,16 @@ list双向链表定义：
 [Go 标准库-双向链表 (container/list) 源码解析]: https://blog.csdn.net/eight_eyes/article/details/121068799
 [理解Golang中的interface和interface{}]:https://www.cnblogs.com/maji233/p/11178413.html
 
+### day02
+
+GoCache代码结构雏形：
+
+~~~go
+gocache/
+	| --lru/
+		| --lru.go		// lru缓存淘汰策略
+	| --byteview.go 	// 缓存值的抽象与封装
+	| --cache.go		// 并发控制
+	| --gocache.go		// 负责与外部交互，控制缓存存储和获取的主流程
+~~~
+

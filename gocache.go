@@ -36,13 +36,14 @@ type Group struct {
 }
 
 var (
-	mu     sync.RWMutex
-	groups = make(map[string]*Group)
+	mu     sync.RWMutex              // 读写锁
+	groups = make(map[string]*Group) // 全部的缓存字典
 )
 
 // NewGroup 实例化Group并将group存储在全局变量groups中。
 func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 	if getter == nil {
+		// 如果没有传入回调函数。
 		panic("nil Getter")
 	}
 	mu.Lock()
@@ -66,16 +67,20 @@ func GetGroup(name string) *Group {
 	return g
 }
 
+// Get 用来返回key对应的value。
 func (g *Group) Get(key string) (ByteView, error) {
 	if key == "" {
+		// 传入的key为空。
 		return ByteView{}, fmt.Errorf("key is required")
 	}
 
 	if v, ok := g.mainCache.get(key); ok {
+		// 命中缓存。
 		log.Println("[GoCache] hit")
 		return v, nil
 	}
 
+	// 使用用户传递的回调函数，来加载缓存。
 	return g.load(key)
 }
 
@@ -83,16 +88,21 @@ func (g *Group) load(key string) (value ByteView, err error) {
 	return g.getLocally(key)
 }
 
+//
 func (g *Group) getLocally(key string) (ByteView, error) {
+	// 调用开发者传递的回调函数，从本地获取数据。
 	bytes, err := g.getter.Get(key)
 	if err != nil {
 		return ByteView{}, err
 	}
+	// 拷贝一份数据，用于返回。
 	value := ByteView{b: cloneBytes(bytes)}
+	// 将数据添加到分布式缓存Cache中。
 	g.populateCache(key, value)
 	return value, nil
 }
 
+// 将键值对数据添加到分布式缓存Cache中。
 func (g *Group) populateCache(key string, value ByteView) {
 	g.mainCache.add(key, value)
 }
