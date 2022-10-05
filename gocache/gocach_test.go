@@ -41,10 +41,11 @@ func TestGet(t *testing.T) {
 				// 成功从本地数据库db查找到数据。
 				if _, ok := loadCounts[key]; !ok {
 					// 如果记录表loadCounts中没有记录过这个key。
-					loadCounts[key] = 0
+					loadCounts[key] = 1
+				} else {
+					// 该key的回调次数+1。
+					loadCounts[key] += 1
 				}
-				// 该key的回调次数+1。
-				loadCounts[key] += 1
 				// 返回字节数组。
 				return []byte(v), nil
 			}

@@ -17,14 +17,14 @@ func (v ByteView) ByteSlice() []byte {
 	return cloneBytes(v.b)
 }
 
-// 将数据转换为字符串并返回，必要时进行复制。
-func (v ByteView) String() string {
-	return string(v.b)
-}
-
 // 生成数据的副本
 func cloneBytes(b []byte) []byte {
 	c := make([]byte, len(b))
 	copy(c, b)
 	return c
+}
+
+// 将数据转换为字符串并返回，必要时进行复制。
+func (v ByteView) String() string {
+	return string(v.b)
 }

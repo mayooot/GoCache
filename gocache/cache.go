@@ -12,6 +12,7 @@ type cache struct {
 	cacheBytes int64
 }
 
+// 可以优化为单例初始化.....
 func (c *cache) add(key string, value ByteView) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

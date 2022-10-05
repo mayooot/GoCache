@@ -19,16 +19,16 @@ type Cache struct {
 	OnEvicted func(key string, value Value)
 }
 
+// Value 为了通用性，值是实现了Value接口的任意类型，该接口只包含一个方法Len() int，用于返回值所占用的内存大小。
+type Value interface {
+	Len() int
+}
+
 // 键值对entry是双向链表中节点的数据类型。在链表中保存每个值对应的key的好处在于淘汰队首节点时，需要用key从字典中删除对应的映射。
 // 因为链表中存入的只有值，那么删除/更新值的时候，无法得知值对应的键，也就无法在字典中删除/更新对应的记录。
 type entry struct {
 	key   string
 	value Value
-}
-
-// Value 为了通用性，值是实现了Value接口的任意类型，该接口只包含一个方法Len() int，用于返回值所占用的内存大小。
-type Value interface {
-	Len() int
 }
 
 // New 实例化函数。需要传递最大内存容量和回调函数。

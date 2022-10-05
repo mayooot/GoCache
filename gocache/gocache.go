@@ -6,6 +6,15 @@ import (
 	"sync"
 )
 
+// Group 一个Group可以认为是一个缓存的命名空间，每个Group拥有一个唯一的名称name。
+// 比如可以创建三个Group，缓存学生的成绩命名为scores，缓存学生的信息命名为infos，缓存学生的课程命名为courses。
+type Group struct {
+	name      string
+	getter    Getter // 缓存未命中时获取源数据的回调
+	mainCache cache  // 并发缓存
+	peers     PeerPicker
+}
+
 /*
 定义一个函数类型F，并且实现接口A的方法，然后在这个方法中调用自己。
 这是Go语言将其他函数（参数返回值定义和F一致）转换为接口A的常用技巧。
@@ -27,14 +36,6 @@ func (f GetterFunc) Get(key string) ([]byte, error) {
 	return f(key)
 }
 
-// Group 一个Group可以认为是一个缓存的命名空间，每个Group拥有一个唯一的名称name。
-// 比如可以创建三个Group，缓存学生的成绩命名为scores，缓存学生的信息命名为infos，缓存学生的课程命名为courses。
-type Group struct {
-	name      string
-	getter    Getter // 缓存未命中时获取源数据的回调
-	mainCache cache  // 并发缓存
-}
-
 var (
 	mu     sync.RWMutex              // 读写锁
 	groups = make(map[string]*Group) // 全部的缓存字典
@@ -52,6 +53,7 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 		name:   name,
 		getter: getter,
 		mainCache: cache{
+			// lru中的最大缓存容量。
 			cacheBytes: cacheBytes,
 		},
 	}
@@ -84,8 +86,30 @@ func (g *Group) Get(key string) (ByteView, error) {
 	return g.load(key)
 }
 
+// RegisterPeers 将实现了PeerPicker接口的HTTPPool注入到Group中
+func (g *Group) RegisterPeers(peers PeerPicker) {
+	if g.peers != nil {
+		panic("RegisterPeerPicker called more than once")
+	}
+	g.peers = peers
+}
+
+// 使用PickPeer()方法选择节点，若非本机节点，则调用getFromPeer()从远程节点获取。若是本机节点或失败，则回退到getLocally()。
 func (g *Group) load(key string) (value ByteView, err error) {
+	if g.peers != nil {
+		if peer, ok := g.peers.PickPeer(key); ok {
+			if value, err := g.getFromPeer(peer, key); err == nil {
+				return value, nil
+			}
+			log.Println("[GoCache] Failed to get from peer", err)
+		}
+	}
 	return g.getLocally(key)
+}
+
+// 将键值对数据添加到分布式缓存Cache中。
+func (g *Group) populateCache(key string, value ByteView) {
+	g.mainCache.add(key, value)
 }
 
 func (g *Group) getLocally(key string) (ByteView, error) {
@@ -101,7 +125,11 @@ func (g *Group) getLocally(key string) (ByteView, error) {
 	return value, nil
 }
 
-// 将键值对数据添加到分布式缓存Cache中。
-func (g *Group) populateCache(key string, value ByteView) {
-	g.mainCache.add(key, value)
+// 使用实现了PeerGetter接口的httpGetter访问远程节点，获取缓存值。
+func (g *Group) getFromPeer(peer PeerGetter, key string) (ByteView, error) {
+	bytes, err := peer.Get(g.name, key)
+	if err != nil {
+		return ByteView{}, err
+	}
+	return ByteView{b: bytes}, nil
 }
