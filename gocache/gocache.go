@@ -1,6 +1,7 @@
 package gocache
 
 import (
+	"GoCache/gocache/singleflight"
 	"fmt"
 	"log"
 	"sync"
@@ -13,6 +14,9 @@ type Group struct {
 	getter    Getter // 缓存未命中时获取源数据的回调
 	mainCache cache  // 并发缓存
 	peers     PeerPicker
+	// use singleFlight.Group to make sure that
+	// each key is only fetched once
+	loader    *singleflight.Group
 }
 
 /*
@@ -56,6 +60,7 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 			// lru中的最大缓存容量。
 			cacheBytes: cacheBytes,
 		},
+		loader: &singleflight.Group{},
 	}
 	groups[name] = g
 	return g
@@ -96,15 +101,25 @@ func (g *Group) RegisterPeers(peers PeerPicker) {
 
 // 使用PickPeer()方法选择节点，若非本机节点，则调用getFromPeer()从远程节点获取。若是本机节点或失败，则回退到getLocally()。
 func (g *Group) load(key string) (value ByteView, err error) {
-	if g.peers != nil {
-		if peer, ok := g.peers.PickPeer(key); ok {
-			if value, err := g.getFromPeer(peer, key); err == nil {
-				return value, nil
+	// each key is only fetched once (either locally or remotely)
+	// regardless of the number of concurrent callers.
+	viewi, err := g.loader.Do(key, func() (interface{}, error) {
+		// 将从其他节点或从数据库中获取数据，封装进方法中。确保只会执行一次。
+		if g.peers != nil {
+			if peer, ok := g.peers.PickPeer(key); ok {
+				if value, err := g.getFromPeer(peer, key); err == nil {
+					return value, nil
+				}
+				log.Println("[GoCache] Failed to get from peer", err)
 			}
-			log.Println("[GoCache] Failed to get from peer", err)
 		}
+		return g.getLocally(key)
+	})
+
+	if err == nil {
+		return viewi.(ByteView), nil
 	}
-	return g.getLocally(key)
+	return
 }
 
 // 将键值对数据添加到分布式缓存Cache中。
