@@ -63,7 +63,8 @@ func (m *Map) Get(key string) string {
 		return m.keys[i] >= hash
 	})
 
-	// 从m.keys中获取到对应点哈希值。如果idx == len(m.keys)，说明应该选择m.keys[0]。
+	// idx可能为n，m.keys[n]会越界，所以使用idx % len(m.keys)来解决。
+	// 如果idx == len(m.keys)，说明应该选择m.keys[0]。
 	// 通过hashMap映射得到真实的节点。
 	return m.hashMap[m.keys[idx%len(m.keys)]]
 }

@@ -11,8 +11,8 @@ import (
 // 比如可以创建三个Group，缓存学生的成绩命名为scores，缓存学生的信息命名为infos，缓存学生的课程命名为courses。
 type Group struct {
 	name      string
-	getter    Getter // 缓存未命中时获取源数据的回调
-	mainCache cache  // 并发缓存
+	getter    Getter // 缓存未命中时获取源数据的回调。
+	mainCache cache  // 并发缓存。
 	peers     PeerPicker
 	// use singleFlight.Group to make sure that
 	// each key is only fetched once
@@ -41,8 +41,8 @@ func (f GetterFunc) Get(key string) ([]byte, error) {
 }
 
 var (
-	mu     sync.RWMutex              // 读写锁
-	groups = make(map[string]*Group) // 全部的缓存字典
+	mu     sync.RWMutex              // 读写锁。
+	groups = make(map[string]*Group) // 全部的缓存字典。
 )
 
 // NewGroup 实例化Group并将group存储在全局变量groups中。

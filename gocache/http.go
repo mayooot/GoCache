@@ -25,7 +25,7 @@ type HTTPPool struct {
 	httpGetters map[string]*httpGetter // 映射远程节点和对应的httpGetter。每一个远程节点对应一个httpGetter。因为httpGetter与远程节点的地址baseURL有关。
 }
 
-// NewHTTPPool = HTTPPool的实例化方法。
+// NewHTTPPool HTTPPool的实例化方法。
 func NewHTTPPool(self string) *HTTPPool {
 	return &HTTPPool{
 		self:     self,
@@ -33,13 +33,13 @@ func NewHTTPPool(self string) *HTTPPool {
 	}
 }
 
-// Log 打印日志信息，format：请求的方法如GET、POST等，v：任意类型的多个参数信息。
+// Log 打印日志信息。
 func (p *HTTPPool) Log(format string, v ...interface{}) {
 	log.Printf("[Server %s] %s", p.self, fmt.Sprintf(format, v...))
 }
 
-// ServeHTTP 负责处理所有的http请求。实现了ServeHTTP(ResponseWriter, *Request)方法有，因此是实现了Handler的实例。
-// 所以可以作为func ListenAndServe(addr string, handler Handler)中的handler参数。
+// ServeHTTP 负责处理所有的http请求。实现了ServeHTTP(ResponseWriter, *Request)方法，是实现了Handler接口的实例。
+// 所以可以作为func ListenAndServe(addr string, handler Handler)中的Handler参数。
 func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(r.URL.Path, p.bashPath) {
 		// 如果请求的URL不是以basePath（"/_gocache/"）开头。
@@ -87,11 +87,13 @@ func (p *HTTPPool) Set(peers ...string) {
 	// 初始化httpGetters
 	p.httpGetters = make(map[string]*httpGetter, len(peers))
 	for _, peer := range peers {
+		// peer:"http://localhost:8001" bashPath: /_gocache/
+		// bashURL: "http://localhost:8001/_gocache/"
 		p.httpGetters[peer] = &httpGetter{baseURL: peer + p.bashPath}
 	}
 }
 
-// PickPeer 包装了一致性算法的Get()方法，根据具体的key，选择节点，返回节点对应的HTTP客户端。
+// PickPeer 包装了一致性哈希算法的Get()方法，根据具体的key，选择节点，返回节点对应的HTTP客户端。
 func (p *HTTPPool) PickPeer(key string) (PeerGetter, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -102,6 +104,7 @@ func (p *HTTPPool) PickPeer(key string) (PeerGetter, bool) {
 	return nil, false
 }
 
+// 确保HTTPPool实现了PeerPicker接口，如果没有实现，在编译期就会报错
 var _ PeerPicker = (*HTTPPool)(nil)
 
 // 实现PeerGetter接口。
@@ -111,6 +114,8 @@ type httpGetter struct {
 }
 
 func (h *httpGetter) Get(group string, key string) ([]byte, error) {
+	// 拼接url，准备发送请求。
+	// bashURL: "http://localhost:8001/_gocache/"	group: "scores"		key: "Tom"
 	u := fmt.Sprintf(
 		"%v%v/%v",
 		h.baseURL,
@@ -118,8 +123,6 @@ func (h *httpGetter) Get(group string, key string) ([]byte, error) {
 		url.QueryEscape(group),
 		url.QueryEscape(key),
 	)
-	log.Println("here: ",u)
-
 	// 使用http.Get()方式获取返回值，并转换为[]byte类型。
 	// http.Get函数返回值是 *Response和error。
 	res, err := http.Get(u)
@@ -143,4 +146,5 @@ func (h *httpGetter) Get(group string, key string) ([]byte, error) {
 	return bytes, nil
 }
 
+// 确保httpGetter实现了PeerGetter接口，如果没有实现，编译期就会报错。
 var _ PeerGetter = (*httpGetter)(nil)
