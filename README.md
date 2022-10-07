@@ -77,6 +77,10 @@ gocache/
 
 ### 测试流程
 
+总流程：
+
+![process](https://richarli.oss-cn-beijing.aliyuncs.com/images/20221005183312.png)
+
 ~~~go
 模拟本地数据库数据：
 	"Tom":  "630",
@@ -88,7 +92,7 @@ gocache/
 
    默认将apiServer和端口为8003的节点绑定在一起，所以会先检查这个服务器中有没有请求key的数据，如果没有，再去其他节点获取。
 
-   ![image-20221007181159001](E:\develop\code\GOProjects\GoCache\pic\run.png)
+   ![run](https://richarli.oss-cn-beijing.aliyuncs.com/images/run.png)
 
 2. 获取key为"Tom"的数据。
 
@@ -100,14 +104,14 @@ gocache/
    curl "http://localhost:9999/api?key=Tom"
    ~~~
 
-   ![image-20221007181529027](E:\develop\code\GOProjects\GoCache\pic\curl1.png)
+   ![run1](https://richarli.oss-cn-beijing.aliyuncs.com/images/curl1.png)
 
 3. 再次获取key为"Tom"的数据
 
    此时默认节点pick出8001节点后，8001节点命中缓存，直接返回数据。
 
-   ![image-20221007181910823](E:\develop\code\GOProjects\GoCache\pic\curl2.png)
+   ![run2](https://richarli.oss-cn-beijing.aliyuncs.com/images/curl2.png)
 
 4. 查询数据库中不存在数据"Jocker"，返回不存在的响应。
 
-   ![image-20221007182238959](E:\develop\code\GOProjects\GoCache\pic\cur3.png)
+   ![run3](https://richarli.oss-cn-beijing.aliyuncs.com/images/cur3.png)
