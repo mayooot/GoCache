@@ -2,7 +2,9 @@ package gocache
 
 import (
 	"GoCache/gocache/consistenthash"
+	pb "GoCache/gocachepb"
 	"fmt"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"log"
 	"net/http"
@@ -70,10 +72,15 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+	// Write the value to the response body as a proto message.
+	body, err := proto.Marshal(&pb.Response{Value: view.ByteSlice()})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	// 设置响应体为二进制流。
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Write(view.ByteSlice())
+	w.Write(body)
 }
 
 // Set 实例化一致性哈希算法，并且传入新的节点。并未每个节点创建一个HTTP客户端httpGetter。
@@ -104,7 +111,7 @@ func (p *HTTPPool) PickPeer(key string) (PeerGetter, bool) {
 	return nil, false
 }
 
-// 确保HTTPPool实现了PeerPicker接口，如果没有实现，在编译期就会报错
+// 确保HTTPPool实现了PeerPicker接口，如果没有实现，在编译期就会报错。
 var _ PeerPicker = (*HTTPPool)(nil)
 
 // 实现PeerGetter接口。
@@ -113,37 +120,41 @@ type httpGetter struct {
 	baseURL string
 }
 
-func (h *httpGetter) Get(group string, key string) ([]byte, error) {
+func (h *httpGetter) Get(in *pb.Request, out *pb.Response) error {
 	// 拼接url，准备发送请求。
 	// bashURL: "http://localhost:8001/_gocache/"	group: "scores"		key: "Tom"
 	u := fmt.Sprintf(
 		"%v%v/%v",
 		h.baseURL,
 		// QueryEscape函数对参数进行转码使之可以安全的用在URL查询里。
-		url.QueryEscape(group),
-		url.QueryEscape(key),
+		url.QueryEscape(in.GetGroup()),
+		url.QueryEscape(in.GetKey()),
 	)
 	// 使用http.Get()方式获取返回值，并转换为[]byte类型。
 	// http.Get函数返回值是 *Response和error。
 	res, err := http.Get(u)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// Response中的Body是ReaderCloser类型（Reader and Closer）。
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("server returned: %v", res.Status)
+		return fmt.Errorf("server returned: %v", res.Status)
 	}
 
 	// func ReadAll(r Reader) ([]byte, error)
 	// ReadAll()函数接收一个Reader，返回[]byte。
 	bytes, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, fmt.Errorf("reading response body: %v", err)
+		return fmt.Errorf("reading response body: %v", err)
 	}
 
-	return bytes, nil
+	if err = proto.Unmarshal(bytes, out); err != nil {
+		return fmt.Errorf("decoing response body: %v", err)
+	}
+
+	return nil
 }
 
 // 确保httpGetter实现了PeerGetter接口，如果没有实现，编译期就会报错。
